@@ -5,6 +5,7 @@ Also a port of the original SendBox (written in Django).
 
 ##Requirements:
 
+* [Rails](rubyonrails.org) - App Framework
 * [Box](http://box.com)           - App API Key
 * [SendGrid](http://sendgrid.com) - API User and API Password
 
