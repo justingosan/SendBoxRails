@@ -14,7 +14,9 @@ Also a port of the original SendBox (written in Django).
 
 After cloning this repository, navigate to root folder and:
 
-1. Add in credentials to 'config/application.rb' (refer to inline comments)':
+1. Run 'bundle install' to install the required gems.
+
+2. Add in credentials to 'config/application.rb' (refer to inline comments)':
 	```ruby
 	....
 	module SendboxRails
