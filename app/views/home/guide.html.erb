@@ -1,0 +1,481 @@
+<!DOCTYPE html>
+<html lang="en">
+    <head>
+        <title>SendBox Guide</title>
+        <head>
+            <%= stylesheet_link_tag "application", :media => "all" %>
+        <style>
+            .close, .close:hover {
+                float:none !important;
+                color: navy !important;
+                text-decoration: none !important;
+                cursor: text !important;
+                opacity: 1 !important;
+                filter: none !important;
+                font-size: 13px !important;
+                font-weight: normal !important;
+            }
+            #main a {
+                color: green;
+            }
+
+        </style>
+    </head>
+    <body>
+        <div class="container">
+            <div class="navbar navbar-fixed-top">
+              <div class="navbar-inner">
+                <div class="container">
+                    <a class="brand" href="<%= url_for(:action => 'index') %>">SendBox</a>
+                    <ul class="nav pull-right">
+                      <li class="active"><a href="<%= url_for(:action => 'index') %>">Home</a></li>
+                      <li class="dropdown">
+                        <a href="#" class="dropdown-toggle" data-toggle="dropdown">
+                          Contents
+                          <b class="caret"></b>
+                        </a>
+                        <ul class="dropdown-menu">
+                          <li><a href="#top">A few initial words and assumptions</a></li>
+                          <li><a href="#initial">Initial Requirements</a></li>
+                          <li><a href="#basicenv">Basic environment setup</a></li>
+                          <li><a href="#views">Building the Application Controller</a></li>
+                          <li><a href="#index">--Index Page</a></li>
+                          <li><a href="#auth">--Authentication Handler</a></li>
+                          <li><a href="#mainapp">--Main Application Page</a></li>
+                          <li><a href="#emails">--Sending them Emails</a></li>
+                          <li><a href="#logout">--Logging Out</a></li>
+                          <li><a href="#whatsnext">What's Next</a></li>
+                        </ul>
+                      </li>
+                    </ul>
+                </div>
+              </div>
+            </div>
+            <div class="row">
+                <div id="main" class="span12">
+                    <h3 id="top">Integrating Box and SendGrid: Building a Rails App using their REST API</h3>
+                    <hr/>
+                    <h4>A few initial words and assumptions:</h4>
+                    <p>This guide will walk you through constructing a functional Rails Application which will, in a nutshell, allow the user to login to his Box account, select a file and email that particular file via SendGrid. You need a <a href="http://box.com">Box account</a> to play around with it ;). If you care to dive into it by yourself, you can download the full source on <a href="https://github.com/justingo/SendBoxRails">Github</a>. Be sure to check 'README' doc for quickly setting it up.</p>
+
+                    <p>Before anything, I will assume that you already have basic working knowledge on constructing a standard Rails Application and that you are familiar on interacting with the standard <a href="http://www.restapitutorial.com/">REST API</a> (GET, POST and PUT at least). Discussion on Rails specific code will be <i>minimal</i> and template code will be <i>stripped down</i> to show only the significant parts. For the template, I used <a href="http://twitter.github.com/bootstrap/">Twitter Bootstrap</a> for quick, beautiful prototyping. You can check my full versions of the app's template along with the full source code: <a href="https://github.com/justingo/SendBoxRails/archive/master.zip">Github</a>.</p>
+                    <hr/>
+                    <h4 id="initial">Initial Requirements:</h4>
+                    <p>Alright! First things first: we're going to need API Keys from both <a href="http://box.com">Box</a> and <a href="http://sendgrid.com/">SendGrid</a> (both are free). In order to grab one from Box.com, we're going to need a <a href="https://www.box.com/signup/personal/">free Box user account</a>. After logging in, you need to create your own <a href="https://www.box.com/developers/services/edit/">Box Developer Application</a>. Give it a unique name and grab the API Key on the next page. No need to fill in the other fields for now.</p>
+
+                    <ul class="thumbnails">
+                      <li class="span8">
+                        <div class="thumbnail">
+                          <img src="/img/box_api.png" alt="">
+                        </div>
+                      </li>
+                    </ul>
+
+                    <p>For the SendGrid API Key, again, we need a <a href="https://sendgrid.com/user/signup">free user account</a>. You may have to wait a while for your account to get provisioned and you may move on to the next paragraph while you wait. If in any case you get denied, you may simply tell them that you need an API Key for an app you are making (at least that's what I did) and they'll be happy to approve your account. After logging in, navigate to <a href="http://sendgrid.com/credentials">SendGrid 'credentials' page</a> then create a new user with access to the 'Mail' API. The username and password will be your api user and key, respectively.</p>
+
+                    <ul class="thumbnails">
+                      <li class="span8">
+                        <div class="thumbnail">
+                          <img src="/img/sendgrid_api.png" alt="">
+                        </div>
+                      </li>
+                    </ul>
+
+                    <p>Everything cool? Ok! Lets start building our app.</p>
+
+                    <hr/>
+                    <h4 id="basicenv">Basic environment setup:</h4>
+                    <div class="alert alert-info">NOTE: I will be referring to the app we're building as '<b>SendBox</b>' and use this name for my variables. Feel free to replace it with your own app name.</div>
+                    <p>Next, lets get the Rails boilerplate going:</p>
+<pre><code># feel free to change quoted names accordingly
+rails new sendbox
+cd sendbox
+rails generate controller home index
+</code></pre>
+<p>Open up '<b>Gemfile</b>' and let's append required gems</p>
+<pre><code># /Gemfile
+....
+gem 'json'
+gem 'rest-client'
+gem 'nokogiri'
+</code></pre>
+<p>Go ahead and run <b><i>bundle package</i></b> and <b><i>bundle install</i></b> to install our required gems.</p>
+<div class="alert alert-info"><b>rest-client</b> is used to interact with RESTful services in ruby, <b>nokogiri</b> is used to parse XML and <b>json</b> is for parsing JSON.</div>
+                <p>Open up '<b>config/application.rb</b>' and lets add in a few globals for our app settings</p>
+<pre><code data-language="python"># config/application.rb
+# change where necessary
+
+....
+module Sendbox
+  class Application < Rails::Application
+    #Box Config
+    $API_KEY = 'helloyouiama30characterapikey'
+
+    #SendGrid Config
+    $SENDGRID_API_URL = "https://sendgrid.com/api/mail.send.json"
+    $SENDGRID_API_USER = "api_user"
+    $SENDGRID_API_KEY = "api_user_password"
+    $DEFAULT_EMAIL_SUBJECT = "I've shared a file to you from Box.com!"
+...
+</code></pre>
+<p>That's it for our app settings!</p>
+                <hr/>
+                <h4 id="views">Building the Application Controller</h4>
+                <p>For this app, I chose to cram in all the application logic into a singular controller because the app was simple enough to not need more than one. Let's setup placeholders for now:</p>
+<pre><code data-language="ruby">#app/controllers/home_controller.rb
+
+require 'rest_client'
+require 'nokogiri'
+require 'json'
+
+class HomeController < ApplicationController
+    def index
+    end
+
+    def get_auth_token_handler
+    end
+
+    def sendbox_app
+    end
+
+    def sendbox_processor
+    end
+
+    def logout
+    end
+end
+</code ></pre>
+<p>Let's also add in our routes in '<b>routes.rb</b>' so we don't have to tinker with them later.</p>
+<pre><code data-language="ruby">#config/routes.rb
+
+Sendbox::Application.routes.draw do
+  match "/get_auth_token_handler" => 'home#get_auth_token_handler'
+  match "/sendbox_app/" => redirect("/sendbox_app/0")
+  match "/sendbox_app/:folder_id" => 'home#sendbox_app'
+  match "/sendbox_processor" => 'home#sendbox_processor'
+  match "/logout" => 'home#logout'
+
+  root :to => 'home#index'
+end
+</code></pre>
+                <h4 id="index">Index Page:</h4>
+                <p>Our index page will be responsible for facilitating user authentication between our app and the Box user's account. The end goal of this page will be to acquire an authenticated ticket from Box which in turn, will be used to acquire an authenticated token (auth_token) used for accessing the Box user's files. You can go through Box's straightforward documentation on the matter here: <a href="http://developers.box.com/get-started/#authenticating">Authentication</a>. This is view implements step 1 and 2 from the documentation. Below is the annotated code to our app's index view:</p>
+<pre><code data-language="ruby">#app/controllers/home_controller.rb
+
+def index
+    # Application Entry Point. Retrieves generated Box.com ticket upon construction.
+    # Facilitates app authentication with user's Box account
+
+    #Request for box ticket
+    request = RestClient.get 'https://www.box.com/api/1.0/rest',
+                    {:params => {'action' => 'get_ticket', 'api_key' => $API_KEY}}
+
+    # grab the 'ticket' value from the response of 'request'
+    @ticket = Nokogiri.XML(request).xpath('/response/ticket').inner_text
+
+    # build ticket authentication url
+    @auth_url = 'https://www.box.com/api/1.0/auth/' + @ticket
+    
+    # check if there is already an auth_token in the session
+    if session[:auth_token]
+        @auth_token = session[:auth_token]
+    end
+
+    render 'index'
+end
+</code></pre>
+                <p>This template outputs a URL which directs the user to Box for authentication. Here's the template for this view:</p>
+<pre><code data-language="html"># template home/index.html.erb (stripped-down version)
+
+&lt;!-- If auth token exists, allow user to use it to access SendBox application or Logout --&gt;
+&lt;% if @auth_token %&gt;
+&lt;div class=&quot;well&quot;&gt;
+    &lt;h3&gt;Session is still active!&lt;/h3&gt;
+    &lt;h4&gt;Your auth_token string is: &lt;%= @auth_token %&gt;&lt;/h4&gt;
+    &lt;a href=&quot;&lt;%= url_for(:action =&gt; 'sendbox_app') %&gt;&quot; type=&quot;button&quot;&gt;Go to SendBox App!&lt;/a&gt; &lt;b&gt;or&lt;/b&gt;
+    &lt;a href=&quot;&lt;%= url_for(:action =&gt; 'logout') %&gt;&quot; type=&quot;button&quot;&gt;Logout!
+&lt;/div&gt;
+&lt;h4&gt;Or you can create another one:&lt;/h4&gt;
+&lt;% end %&gt;
+
+
+&lt;%= form_tag(&quot;/get_auth_token_handler&quot;, :method =&gt; &quot;post&quot;, :class =&gt; &quot;well&quot;) do %&gt;
+    &lt;h4&gt;Your ticket string is: &lt;%= @ticket %&gt;&lt;/h4&gt;
+    &lt;%= hidden_field_tag(:ticket, @ticket) %&gt;
+
+    &lt;!-- Ticket Authentication Link for user --&gt;
+    &lt;h4&gt;First we must pair and authenticate the generated ticket with your box account!&lt;/h4&gt;
+    &lt;a target=&quot;new_window&quot; href=&quot;&lt;%= @auth_url %&gt;&quot; type=&quot;button&quot;&gt;Login to Box.com&lt;/a&gt;
+
+    &lt;!-- Allow Manual authentication for offline apps --&gt;
+    &lt;blockquote&gt;
+        &lt;h4&gt;If Box.com cannot redirect to me after you login, you can manually retreive and use
+            the authentication token by clicking this button:
+        &lt;/h4&gt;
+        &lt;button id=&quot;boxAuth&quot; type=&quot;submit&quot;&gt;Manual Authentication&lt;/button&gt;
+        &lt;h4&gt;..otherwise you may close this window.&lt;/h4&gt;
+    &lt;/blockquote&gt;
+&lt;% end %&gt;
+
+</code></pre>
+                <p>That's it for our app's index page.</p>
+                <hr/>
+                <h4 id="auth">Authentication Handler:</h4>
+                <p>Next we'll move on to 'get_auth_token' controller method. From the name itself, its responsibility is getting the auth_token from Box, saving it to a session variable then redirecting the user to the main app.</p>
+<pre><code data-language="ruby">#app/controllers/home_controller.rb
+
+def get_auth_token_handler
+    # Receives: POST data 'ticket' OR GET request with parameters 'auth_token' and 'ticket' from Box.com
+    # Pairs authenticated ticket with Box API Key to retreive Auth auth_token
+    # needed for accessing user Box files and folders.
+
+    # if auth_token is part of parameter, assign it to session and redirect to main application
+    if params[:auth_token]
+        session[:auth_token] = params[:auth_token]
+        redirect_to :action => "sendbox_app" and return
+    end
+
+    # if auth_token exists, redirect to sendbox application page
+    if session[:auth_token]
+        redirect_to :action => "sendbox_app" and return
+
+    # else if ticket exists, attempt to authenticate then redirect to main application
+    elsif params[:ticket]
+
+        #ticket number from POST
+        ticket = params[:ticket]
+
+        #request authentication
+        request = RestClient.get 'https://www.box.com/api/1.0/rest',
+                    {:params => {'action' => 'get_auth_token', 'api_key' => $API_KEY, 'ticket' => ticket}}
+
+        # Assign auth_token to session variable
+        session[:auth_token] = Nokogiri.XML(request).xpath('/response/auth_token').inner_text
+            
+        redirect_to :action => "sendbox_app" and return
+    end
+
+    # else redirect to home page
+    redirect_to :action => "index"
+end
+</code></pre>
+<div class="alert alert-info">NOTE: You can check out what Box's XML and JSON response looks like on in its <a href="http://developers.box.com/docs/">official API documentation</a> (Check right side). You can also add breakpoints in our code (right below the 'obj' variables and examine the raw 'response' variable or the parsed 'obj' variable)</div>
+                <p>By now, the user should be able to authenticate with Box and our app capable of retrieving the auth_token.</p>
+                <hr/>
+                <h4 id="mainapp">Main Application Page:</h4>
+                <p>Now to the main app page. Upon entry, this view retrieves, by default, the contents of the user's root Box folder (folder_id = 0) and displays it accordingly in a rendered template. Here's the <a href="http://developers.box.com/docs/#folders">official documentation</a> for the Box 'folder' API. This view is also structured in a way that it allows navigation to child folders as we will see here:</p>
+<pre><code data-language="ruby">#app/controllers/home_controller.rb
+
+def sendbox_app
+    # Main Application View. Displays table of all files and folders on current 'folder_id'.
+    # Allows simple folder navigation and provides 'share links' for files.
+
+    # Check if auth_token exists in session
+    if session[:auth_token]
+
+        # Build our authentication headers to be included in request payload
+        auth_headers = "BoxAuth api_key=" + $API_KEY + "&auth_token=" + session[:auth_token]
+
+        # perform get request for all files in folder in directory ':folder_id'
+        # by default, the app foes to 'folder_id = 0' which corresponds to the root Box folder.
+        request = RestClient.get 'https://api.box.com/2.0/folders/'+ params[:folder_id], {:Authorization => auth_headers}
+
+        # parse our JSON response
+        obj = JSON.parse(request)
+        
+        # grab values from JSON response to be used in main application
+        @folder = obj['name']
+        @items = obj['item_collection']['entries']
+        @parent = obj['parent']
+        @subject = $DEFAULT_SUBJECT
+
+        # grab user email to be used later as sender email
+        session[:user_email] = obj['owned_by']['login']
+
+        # render our main application page
+        render "home/sendbox" and return
+    end
+
+    #else redirect to home page
+    redirect_to :action => "index"
+end
+</code></pre>
+<p>This view's template should render the retrieved items, such that, there ought to be a clear distinction between files and folders. The corresponding links beside each item changes accordingly ('Open' for folders and 'Share' for files). Here's the code:</p>
+<pre><code data-language="html"># template home/sendbox.html.erb (Stripped-down version)
+
+&lt;!-- MAIN SENDBOX APP --&gt;
+&lt;div&gt;
+    &lt;h4&gt;Browsing '&lt;%= @folder %&gt;'&lt;/h4&gt;
+&lt;/div&gt;
+&lt;div class=&quot;float-right&quot;&gt;
+    &lt;% if @parent %&gt;
+    &lt;!-- if parent folder exists, display 'up one level' link --&gt;
+    &lt;a href=&quot;&lt;%= url_for(:action =&gt; 'sendbox_app', :folder_id =&gt; @parent['id']) %&gt;&quot;&gt;Up one level&lt;/a&gt;
+    &lt;% end %&gt;
+    &lt;!-- logout link --&gt;
+    &lt;a href=&quot;&lt;%= url_for(:action =&gt; 'logout') %&gt;&quot; type=&quot;button&quot;&gt;Logout!&lt;/a&gt;
+&lt;/div&gt;
+&lt;table&gt;
+    &lt;thead&gt;
+        &lt;tr&gt;
+            &lt;th&gt;Type&lt;/th&gt;
+            &lt;th&gt;File/Folder Name&lt;/th&gt;
+            &lt;th&gt;Link&lt;/th&gt;
+        &lt;/tr&gt;
+    &lt;/thead&gt;
+    &lt;tbody&gt;
+    &lt;!-- Iterate through each of this folder's items --&gt;
+    &lt;% @items.each do |item| %&gt;
+        &lt;tr class=&quot;&lt;% if item['type'] == 'folder' %&gt;warning&lt;%end%&gt;&quot;&gt;
+            &lt;td&gt;&lt;%= item['type'].humanize %&gt;&lt;/td&gt;
+            &lt;td&gt;&lt;%= item['name'] %&gt;&lt;/td&gt;
+            &lt;td&gt;
+                &lt;% if item['type'] == 'folder' %&gt;
+                &lt;!-- if item type is folder, display 'Open' folder link --&gt;
+                &lt;a href=&quot;&lt;%= url_for(:action =&gt; 'sendbox_app', :folder_id =&gt; item['id']) %&gt;&quot;&gt;Open&lt;/a&gt;
+                &lt;% elsif item['type'] == 'file' %&gt;
+                &lt;!-- if item type is file, display 'Share' file link --&gt;
+                &lt;a file-id=&quot;&lt;%= item['id'] %&gt;&quot; file-name=&quot;&lt;%= item['name'] %&gt;&quot; class=&quot;shareLink&quot; href=&quot;#emailModal&quot; role=&quot;button&quot; data-toggle=&quot;modal&quot;&gt;Share&lt;/a&gt;
+                &lt;% end %&gt;
+            &lt;/td&gt;
+        &lt;/tr&gt;
+    &lt;% end %&gt;
+
+    &lt;% if @items.empty? %&gt;
+    &lt;!-- Display message if folder has no children --&gt;
+        &lt;tr class=&quot;error&quot;&gt;&lt;td colspan='3'&gt;No files here! Try adding files to this Box folder.&lt;/td&gt;&lt;/tr&gt;
+    &lt;% end %&gt;  
+    &lt;/tbody&gt;
+&lt;/table&gt;
+
+&lt;!-- MODAL --&gt;
+&lt;!-- Display this modal when user clicks on the share link --&gt;
+&lt;div id=&quot;emailModal&quot; tabindex=&quot;-1&quot; role=&quot;dialog&quot; aria-labelledby=&quot;Email Form&quot; aria-hidden=&quot;true&quot; class=&quot;modal hide fade&quot;&gt;
+    &lt;%= form_tag(:action =&gt; &quot;sendbox_processor&quot;, :method =&gt; &quot;post&quot;) do %&gt;
+      &lt;div class=&quot;modal-header&quot;&gt;
+        &lt;button type=&quot;button&quot; class=&quot;close&quot; data-dismiss=&quot;modal&quot; aria-hidden=&quot;true&quot;&gt;&amp;times;&lt;/button&gt;
+        &lt;h4 id=&quot;filename&quot;&gt;Send Link&lt;/h4&gt;
+      &lt;/div&gt;
+      &lt;div class=&quot;modal-body&quot;&gt;
+          &lt;input name=&quot;email&quot; class=&quot;span5 required&quot; type=&quot;email&quot; multiple=&quot;multiple&quot; placeholder=&quot;To: sendbox@sb.ph (Required)&quot;&gt;
+          &lt;input name=&quot;subject&quot; class=&quot;span5&quot; type=&quot;text&quot; placeholder=&quot;&lt;%= @subject %&gt; (Default)&quot;&gt;
+            &lt;%= hidden_field_tag(:file_id) %&gt;
+          &lt;textarea name=&quot;message&quot; class=&quot;field span5&quot; id=&quot;textarea&quot; rows=&quot;6&quot; placeholder=&quot;Message: (Optional)&quot;&gt;&lt;/textarea&gt;
+      &lt;/div&gt;
+      &lt;div class=&quot;modal-footer&quot;&gt;
+        &lt;a href=&quot;#&quot; class=&quot;btn&quot; data-dismiss=&quot;modal&quot; aria-hidden=&quot;true&quot;&gt;Close&lt;/a&gt;
+        &lt;button class=&quot;btn btn-primary&quot; type=&quot;submit&quot;&gt;Send Email&lt;/button&gt;
+      &lt;/div&gt;
+    &lt;% end %&gt;
+&lt;/div&gt;
+
+&lt;script type=&quot;text/javascript&quot;&gt;
+    $(function(){
+        $('.shareLink').click(function(){
+            var file_id = $(this).attr('file-id'); 
+            var file_name = $(this).attr('file-name'); 
+            $('#file_id').val(file_id);
+            $('#filename').text('Sending &quot;' + file_name +'&quot;');
+        })
+    })
+&lt;/script&gt;
+</code></pre>
+                <div class="alert alert-info">NOTE: The javascript at the bottom is necessary for our code. It copies the 'file id' to the form to be processed for sharing. I advise that you also implement a modal dialogue for the form (like I did in my app) because it will not look pretty as it stands now :)</div>
+                <hr/>
+                <h4 id="emails">Sending them Emails:</h4>
+                <p>We're almost done! Next we'll tackle the brain of our app: 'sendbox_processor'. This is our second and last form handler for  and it handles two important things: generating a shared link of the chosen file through Box's API and forwarding an email request to SendGrid's API.</p>
+
+<pre><code data-language="ruby">#app/controllers/home_controller.rb
+
+def sendbox_processor
+    # Receives: POST value 'file_id', 'email', 'subject', 'message'
+    # Generates Share Link based on file_id
+    # Makes use of SendGrid API to send email
+
+    # Check if file_id and email values are present in POST params
+    if params[:file_id] and params[:email]
+        # Generate shared link using Box API
+
+        # Build PUT data payload
+        data = JSON.generate(['shared_link' => ['access' => 'Open']])
+
+        # Build our authentication headers
+        auth_headers = "BoxAuth api_key=" + $API_KEY + "&auth_token=" + session[:auth_token]
+
+        # perform PUT request to Box File API
+        # returns with response containing generated shared link
+        request = RestClient.put 'https://api.box.com/2.0/files/'+ params[:file_id], data, {:Authorization => auth_headers}
+
+        # parse JSON response
+        obj = JSON.parse(request)
+
+        # Extract JSON values to be included in email
+        filename = obj['name']
+        shared_link = obj['shared_link']['url']
+
+
+        # Compose and send our email via SendGrid API
+        subject = params[:subject] == "" ? $DEFAULT_SUBJECT : params[:subject]
+        message = params[:message]+ "\n\n\nFile Name: " + filename + "\n\nBox Shared Link: " + shared_link
+        emails  = params[:email]
+        from_email = session[:user_email]
+
+        # build GET parameters
+        payload = {:api_user => $SENDGRID_API_USER,     
+                    :api_key => $SENDGRID_API_KEY,
+                      :to=> emails,
+                        :subject => subject,
+                          :text => message,
+                            :from => from_email, }
+
+        # Perform SenGrid Email Request
+        RestClient.get 'https://sendgrid.com/api/mail.send.json', {:params => payload}
+
+        # After all is done, redirect to main application page and tell the user the good news!
+        redirect_to :action => "sendbox_app", :folder_id => 0, :success => emails and return
+    end
+
+    # else redirect to home page
+    redirect_to :action => "index"
+end
+</code></pre>
+                <div class="alert alert-info">NOTE: You can check out SendGrid's own documentation on its <a href="http://sendgrid.com/docs/API%20Reference/Web%20API/mail.html">Mail Web API</a>.</div>
+                <hr/>
+                <h4 id="logout">Logging Out:</h4>
+                <p>Lastly, our logout method goes like this:</p>
+<pre><code data-language="ruby">#app/controllers/home_controller.rb
+
+def logout
+    #Clears all sessions then redirects to home page
+    reset_session
+    redirect_to :action => "index"
+end
+</code></pre>
+
+                <p>That's it! If you haven't done so already, run:</p>
+<pre><code>rails server</code></pre>
+                <p>...and test out your new app.</p>
+                <hr/>
+                <h4 id="whatsnext">What's Next:</h4>
+                <p>If you haven't done so, make it pretty! <a href="http://twitter.github.com/bootstrap/">Twitter Bootstrap</a> is awesome at that.</p>
+                <p>You can put it up on a live server and setup Box Developer App redirection so your users don't have to manually authenticate. Just be sure to have Box redirect to http://your.domain/sendbox/<b>get_auth_token</b> and the app should do the rest :)</p>
+                </div>
+            </div>
+            <hr/>
+            <footer class="footer">
+                <a href="http://jz10.info">© 2012 jz10.info</a>
+            </footer>
+        </div>
+        <%= javascript_include_tag "application" %>
+        <script type="text/javascript">
+        $(function() {
+                $(".dropdown-menu a").click(function() {
+                  var target = $(this).attr("href")
+                  target = target.substring(1,target.length);
+                  $(window).scrollTop($('h4[id="'+target+'"]').offset().top - 60); 
+                  return false; 
+                });
+        });
+        </script>
+    </body>
+</html>

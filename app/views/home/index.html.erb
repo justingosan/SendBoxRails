@@ -1,0 +1,32 @@
+<div class="row">
+    <div class="span8">
+        <% if @auth_token %>
+        <div class="well">
+            <h3>Session is still active!</h3>
+            <div class="alert alert-warning">
+                <span>If I were a real live app, I wouldn't have displayed the auth_token or ticket string to you :)</span>
+            </div>
+            <h4>Your auth_token string is: <%= @auth_token %></h4>
+            <a class="btn btn-primary btn-success" href="<%= url_for(:action => 'sendbox_app') %>" type="button"><i class="icon-star icon-white"></i> Go to SendBox App!</a> <b>or</b>
+            <a class="btn btn-warning urlButton" href="<%= url_for(:action => 'logout') %>" type="button"><i class="icon-off icon-white"></i> Logout!</a>
+        </div>
+        <h4>Or you can create another one:</h4>
+        <% end %>
+        <%= form_tag("/get_auth_token_handler", :method => "post", :class => "well") do %>
+            <h4 class="control-label">Your ticket string is: <%= @ticket %></h4>
+            <%= hidden_field_tag(:ticket, @ticket) %>
+            <h4>First we must pair and authenticate the generated ticket with your box account!</h4>
+            <a class="btn btn-primary btn-large btn-block" target="new_window" href="<%= @auth_url %>" type="button"><i class="icon-user icon-white"></i> Login to Box.com</a>
+            <div class="alert alert-info">
+                <span>Since I'm not really a live app, you may want your Box account to forget me after we're done playing :)  Navigate to <a href="https://www.box.com/settings">Box Account Settings</a> > Security Tab</span>
+            </div>
+            <blockquote>
+                <h4>If Box.com cannot redirect to me after you login, you can manually retreive and use
+                    the authentication token by clicking this button:
+                </h4>
+                <button class="btn btn-primary btn-small" id="boxAuth" type="submit">Manual Authentication</button>
+                <h4>..otherwise you may close this window.</h4>
+            </blockquote>
+        <% end %>
+    </div>
+</div>

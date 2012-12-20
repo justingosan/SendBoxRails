@@ -1,0 +1,30 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <title>SendboxRails</title>
+  <%= stylesheet_link_tag    "application", :media => "all" %>
+  <%= csrf_meta_tags %>
+</head>
+<body>
+    <div class="navbar navbar-fixed-top">
+      <div class="navbar-inner">
+        <div class="container">
+            <div class="span7">
+                <a class="brand" href="<%= url_for(:action => 'index') %>">SendBox</a>
+                 <ul class="nav pull-right">
+                  <li class=""><a href="<%= url_for(:action => 'guide') %>">Guide</a></li>
+                </ul>
+            </div>
+        </div>
+      </div>
+    </div>
+    <div class="container">
+		<%= yield %>
+		<hr/>
+		<footer class="footer">
+		    <a href="http://jz10.info">© 2012 jz10.info</a>
+		</footer>
+	</div>
+<%= javascript_include_tag "application" %>
+</body>
+</html>

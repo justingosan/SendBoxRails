@@ -1,0 +1,68 @@
+<div class="row">
+    <div class="span8">
+        <!-- MAIN SENDBOX APP -->
+        <% if params[:success] %>
+        <ul class="messages">
+            <li class="alert alert-info">Message sent to: <%= params[:success] %></li>
+        </ul>
+        <% end %>
+        <div class="well">
+            <div>
+                <h4>Browsing '<%= @folder %>'</h4>
+            </div>
+            <div class="float-right">
+                <% if @parent %>
+                <a class="btn btn-primary btn-small" href="<%= url_for(:action => 'sendbox_app', :folder_id => @parent['id']) %>"><i class="icon-zoom-out icon-white"></i> Up one level</a>
+                <% end %>
+                <a class="btn btn-warning btn-small urlButton" href="<%= url_for(:action => 'logout') %>" type="button"><i class="icon-off icon-white"></i> Logout!</a>
+            </div>
+        <table class="table table-striped">
+                <thead>
+                    <tr>
+                        <th>Type</th>
+                        <th>File/Folder Name</th>
+                        <th>Link</th>
+                    </tr>
+                </thead>
+            <tbody>
+            <% @items.each do |item| %>
+                <tr class="<% if item['type'] == 'folder' %>warning<%end%>">
+                    <td><%= item['type'].humanize %></td>
+                    <td><%= item['name'] %></td>
+                    <td>
+                        <% if item['type'] == 'folder' %>
+                        <a href="<%= url_for(:action => 'sendbox_app', :folder_id => item['id']) %>"><i class="icon-folder-open"></i> Open</a>
+                        <% elsif item['type'] == 'file' %>
+                        <a file-id="<%= item['id'] %>" file-name="<%= item['name'] %>" class="shareLink" href="#emailModal" role="button" data-toggle="modal"><i class="icon-envelope"></i> Share</a>
+                        <% end %>
+                    </td>
+                </tr>
+                  
+            <% end %>
+            <% if @items.empty? %>
+                <tr class="error"><td colspan='3'>No files here! Try adding files to this Box folder.</td></tr>
+            <% end %>  
+            </tbody>
+        </table>
+        </div>
+
+        <!-- MODAL -->
+        <div id="emailModal" tabindex="-1" role="dialog" aria-labelledby="Email Form" aria-hidden="true" class="modal hide fade">
+            <%= form_tag(:action => "sendbox_processor", :method => "post") do %>
+              <div class="modal-header">
+                <button type="button" class="close" data-dismiss="modal" aria-hidden="true">&times;</button>
+                <h4 id="filename">Send Link</h4>
+              </div>
+              <div class="modal-body">
+                  <input name="email" class="span5 required" type="email" multiple="multiple" placeholder="To: sendbox@sb.ph (Required)">
+                  <input name="subject" class="span5" type="text" placeholder="<%= @subject %> (Default)">
+                    <%= hidden_field_tag(:file_id) %>
+                  <textarea name="message" class="field span5" id="textarea" rows="6" placeholder="Message: (Optional)"></textarea>
+              </div>
+              <div class="modal-footer">
+                <a href="#" class="btn" data-dismiss="modal" aria-hidden="true">Close</a>
+                <button class="btn btn-primary" type="submit">Send Email</button>
+              </div>
+            <% end %>
+        </div>
+</div></div>
