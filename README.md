@@ -1,14 +1,17 @@
 #SendBox (Rails)
 
 A Sample Rails App integrating the Box.com and SendGrid API.
+Also a port of the original SendBox (written in Django).
 
 ##Requirements:
 
-* [Box](http://box.com) App API Key
-* [SendGrid](http://sendgrid.com) API User and API Password
+* [Box](http://box.com)           - App API Key
+* [SendGrid](http://sendgrid.com) - API User and API Password
 
 
 ##Quick Setup:
+
+After cloning this repository, navigate to root folder and:
 
 1. Add in credentials to 'config/application.rb' (refer to inline comments)':
 	```ruby
