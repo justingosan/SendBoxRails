@@ -397,7 +397,7 @@ def sendbox_processor
         # Generate shared link using Box API
 
         # Build PUT data payload
-        data = JSON.generate(['shared_link' => ['access' => 'Open']])
+        data = '{"shared_link": {"access": "open"}}'
 
         # Build our authentication headers
         auth_headers = "BoxAuth api_key=" + $API_KEY + "&auth_token=" + session[:auth_token]
