@@ -3,6 +3,8 @@
 A Sample Rails App integrating the Box.com and SendGrid API.
 Also a port of the original SendBox (written in Django).
 
+Check out the [demo](http://sendboxrails.herokuapp.com/)
+
 ##Requirements:
 
 * [Rails](rubyonrails.org) - App Framework
