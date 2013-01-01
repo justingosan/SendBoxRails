@@ -86,7 +86,7 @@ class HomeController < ApplicationController
 
         if params[:file_id] and params[:email]
             # Generate shared link using Box API
-            data = JSON.generate(['shared_link' => ['access' => 'Open']])
+            data = '{"shared_link": {"access": "open"}}'
             auth_headers = "BoxAuth api_key=" + $API_KEY + "&auth_token=" + session[:auth_token]
             request = RestClient.put 'https://api.box.com/2.0/files/'+ params[:file_id], data, {:Authorization => auth_headers}
             obj = JSON.parse(request)
